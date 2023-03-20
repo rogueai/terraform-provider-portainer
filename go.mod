@@ -2,7 +2,11 @@ module terraform-provider-portainer
 
 go 1.18
 
-require github.com/hashicorp/terraform-plugin-framework v1.0.0
+require (
+	github.com/antihax/optional v1.0.0
+	github.com/hashicorp/terraform-plugin-framework v1.0.0
+	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
+)
 
 require (
 	github.com/fatih/color v1.13.0 // indirect
