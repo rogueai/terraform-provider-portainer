@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"os"
 	portainer "terraform-provider-portainer/client"
 )
@@ -127,6 +128,12 @@ func (p *portainerProvider) Configure(ctx context.Context, req provider.Configur
 		return
 	}
 
+	ctx = tflog.SetField(ctx, "portainer_host", host)
+	ctx = tflog.SetField(ctx, "portainer_api_key", apiKey)
+	ctx = tflog.MaskFieldValuesWithFieldKeys(ctx, "portainer_api_key")
+
+	tflog.Debug(ctx, "Creating Portainer client")
+
 	// Create a new Portainer client using the configuration values
 	clientConfig := portainer.NewConfiguration()
 	clientConfig.BasePath = host
@@ -139,6 +146,8 @@ func (p *portainerProvider) Configure(ctx context.Context, req provider.Configur
 	// type Configure methods.
 	resp.DataSourceData = client
 	resp.ResourceData = client
+
+	tflog.Info(ctx, "Configured Portainer client", map[string]any{"success": true})
 }
 
 // DataSources defines the data sources implemented in the provider.

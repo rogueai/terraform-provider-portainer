@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	portainer "terraform-provider-portainer/client"
 	"terraform-provider-portainer/portainer/model"
 	"terraform-provider-portainer/portainer/schema"
@@ -36,7 +37,7 @@ func (d *stacksDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 func (d *stacksDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state model.Stacks
 
-	stacks, _, err := d.client.StacksApi.StackList(context.Background(), nil)
+	stacks, _, err := d.client.StacksApi.StackList(ctx, nil)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Read Portainer Stack",
@@ -145,7 +146,9 @@ func (d *stacksDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 }
 
 // Configure adds the provider configured client to the data source.
-func (d *stacksDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
+func (d *stacksDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
+	tflog.Info(ctx, "Configuring HashiCups client")
+
 	if req.ProviderData == nil {
 		return
 	}
