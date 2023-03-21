@@ -2,11 +2,11 @@ package portainer
 
 import (
 	"context"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	portainer "terraform-provider-portainer/client"
+	"terraform-provider-portainer/portainer/model"
+	"terraform-provider-portainer/portainer/schema"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -29,240 +29,17 @@ func (d *stacksDataSource) Metadata(_ context.Context, req datasource.MetadataRe
 
 // Schema defines the schema for the data source.
 func (d *stacksDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
-	resp.Schema = schema.Schema{
-		Attributes: map[string]schema.Attribute{
-			"stacks": schema.ListNestedAttribute{
-				Computed: true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"additional_files": schema.ListAttribute{
-							Computed:    true,
-							ElementType: types.StringType,
-						},
-						"auto_update": schema.SingleNestedAttribute{
-							Computed: true,
-							Attributes: map[string]schema.Attribute{
-								"interval": schema.StringAttribute{Computed: true},
-								"job_id":   schema.StringAttribute{Computed: true},
-								"webhook":  schema.StringAttribute{Computed: true},
-							},
-						},
-						"endpoint_id": schema.Int64Attribute{
-							Computed: true,
-						},
-						"entry_point": schema.StringAttribute{
-							Computed: true,
-						},
-						"env": schema.ListNestedAttribute{
-							Computed: true,
-							NestedObject: schema.NestedAttributeObject{
-								Attributes: map[string]schema.Attribute{
-									"name": schema.StringAttribute{
-										Computed: true,
-									},
-									"value": schema.StringAttribute{
-										Computed: true,
-									},
-								},
-							},
-						},
-						"id": schema.Int64Attribute{
-							Computed: true,
-						},
-						"name": schema.StringAttribute{
-							Computed: true,
-						},
-						"option": schema.ObjectAttribute{
-							Computed: true,
-							AttributeTypes: map[string]attr.Type{
-								"prune": types.BoolType,
-							},
-						},
-						"resource_control": schema.SingleNestedAttribute{
-							Computed: true,
-							Attributes: map[string]schema.Attribute{
-								"access_level":        schema.Int64Attribute{Computed: true},
-								"administrators_only": schema.BoolAttribute{Computed: true},
-								"id":                  schema.Int64Attribute{Computed: true},
-								"owner_id":            schema.Int64Attribute{Computed: true},
-								"public":              schema.BoolAttribute{Computed: true},
-								"resource_id":         schema.StringAttribute{Computed: true},
-								"sub_resource_ids": schema.ListAttribute{
-									Computed:    true,
-									ElementType: types.StringType,
-								},
-								"system": schema.BoolAttribute{Computed: true},
-								"team_accesses": schema.ListNestedAttribute{
-									Computed: true,
-									NestedObject: schema.NestedAttributeObject{
-										Attributes: map[string]schema.Attribute{
-											"access_level": schema.Int64Attribute{Computed: true},
-											"team_id":      schema.Int64Attribute{Computed: true},
-										},
-									},
-								},
-								"type": schema.Int64Attribute{Computed: true},
-								"user_accesses": schema.ListNestedAttribute{
-									Computed: true,
-									NestedObject: schema.NestedAttributeObject{
-										Attributes: map[string]schema.Attribute{
-											"access_level": schema.Int64Attribute{Computed: true},
-											"user_id":      schema.Int64Attribute{Computed: true},
-										},
-									},
-								},
-							},
-						},
-						"status": schema.Int64Attribute{
-							Computed: true,
-						},
-						"swarm_id": schema.StringAttribute{
-							Computed: true,
-						},
-						"type": schema.Int64Attribute{
-							Computed: true,
-						},
-						"created_by": schema.StringAttribute{
-							Computed: true,
-						},
-						"creation_date": schema.Int64Attribute{
-							Computed: true,
-						},
-						"from_app_template": schema.BoolAttribute{
-							Computed: true,
-						},
-						"git_config": schema.SingleNestedAttribute{
-							Computed: true,
-							Attributes: map[string]schema.Attribute{
-								"authentication": schema.SingleNestedAttribute{
-									Computed: true,
-									Attributes: map[string]schema.Attribute{
-										"git_credential_id": schema.Int64Attribute{Computed: true},
-										"password": schema.StringAttribute{
-											Computed: true,
-										},
-										"username": schema.StringAttribute{Computed: true},
-									},
-								},
-								"config_file_path": schema.StringAttribute{Computed: true},
-								"config_hash":      schema.StringAttribute{Computed: true},
-								"reference_name":   schema.StringAttribute{Computed: true},
-								"url":              schema.StringAttribute{Computed: true},
-							},
-						},
-						"is_compose_format": schema.BoolAttribute{
-							Computed: true,
-						},
-						"namespace": schema.StringAttribute{
-							Computed: true,
-						},
-						"project_path": schema.StringAttribute{
-							Computed: true,
-						},
-						"update_date": schema.Int64Attribute{
-							Computed: true,
-						},
-						"updated_by": schema.StringAttribute{
-							Computed: true,
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
-type StacksDataSourceModel struct {
-	Stacks []stacksModel `tfsdk:"stacks"`
-}
-
-// stacksModel maps stacks schema data.
-type stacksTeamAccessesModel struct {
-	AccessLevel types.Int64 `tfsdk:"access_level"`
-	TeamId      types.Int64 `tfsdk:"team_id"`
-}
-
-type stacksUserAccessesModel struct {
-	AccessLevel types.Int64 `tfsdk:"access_level"`
-	UserId      types.Int64 `tfsdk:"user_id"`
-}
-
-type stacksResourceControlModel struct {
-	AccessLevel        types.Int64               `tfsdk:"access_level"`
-	AdministratorsOnly types.Bool                `tfsdk:"administrators_only"`
-	Id                 types.Int64               `tfsdk:"id"`
-	OwnerId            types.Int64               `tfsdk:"owner_id"`
-	Public             types.Bool                `tfsdk:"public"`
-	ResourceId         types.String              `tfsdk:"resource_id"`
-	SubResourceIds     []string                  `tfsdk:"sub_resource_ids"`
-	System             types.Bool                `tfsdk:"system"`
-	TeamAccesses       []stacksTeamAccessesModel `tfsdk:"team_accesses"`
-	Type               types.Int64               `tfsdk:"type"`
-	UserAccesses       []stacksUserAccessesModel `tfsdk:"user_accesses"`
-}
-
-type stacksGitAuthenticationModel struct {
-	GitCredentialID types.Int64  `tfsdk:"git_credential_id"`
-	Password        types.String `tfsdk:"password"`
-	Username        types.String `tfsdk:"username"`
-}
-
-type stacksGitConfigModel struct {
-	Authentication stacksGitAuthenticationModel `tfsdk:"authentication"`
-	ConfigFilePath types.String                 `tfsdk:"config_file_path"`
-	ConfigHash     types.String                 `tfsdk:"config_hash"`
-	ReferenceName  types.String                 `tfsdk:"reference_name"`
-	Url            types.String                 `tfsdk:"url"`
-}
-
-type stacksOptionModel struct {
-	Prune types.Bool `tfsdk:"prune"`
-}
-
-type stacksModel struct {
-	AdditionalFiles []types.String             `tfsdk:"additional_files"`
-	AutoUpdate      stacksAutoUpdateModel      `tfsdk:"auto_update"`
-	EndpointId      types.Int64                `tfsdk:"endpoint_id"`
-	EntryPoint      types.String               `tfsdk:"entry_point"`
-	Env             []stacksEnvModel           `tfsdk:"env"`
-	Id              types.Int64                `tfsdk:"id"`
-	Name            types.String               `tfsdk:"name"`
-	Option          stacksOptionModel          `tfsdk:"option"`
-	ResourceControl stacksResourceControlModel `tfsdk:"resource_control"`
-	Status          types.Int64                `tfsdk:"status"`
-	SwarmId         types.String               `tfsdk:"swarm_id"`
-	Type            types.Int64                `tfsdk:"type"`
-	CreatedBy       types.String               `tfsdk:"created_by"`
-	CreationDate    types.Int64                `tfsdk:"creation_date"`
-	FromAppTemplate types.Bool                 `tfsdk:"from_app_template"`
-	GitConfig       stacksGitConfigModel       `tfsdk:"git_config"`
-	IsComposeFormat types.Bool                 `tfsdk:"is_compose_format"`
-	Namespace       types.String               `tfsdk:"namespace"`
-	ProjectPath     types.String               `tfsdk:"project_path"`
-	UpdateDate      types.Int64                `tfsdk:"update_date"`
-	UpdatedBy       types.String               `tfsdk:"updated_by"`
-}
-
-// coffeesIngredientsModel maps coffee ingredients data
-type stacksAutoUpdateModel struct {
-	Interval types.String `tfsdk:"interval"`
-	JobID    types.String `tfsdk:"job_id"`
-	Webhook  types.String `tfsdk:"webhook"`
-}
-
-type stacksEnvModel struct {
-	Name  types.String `tfsdk:"name"`
-	Value types.String `tfsdk:"value"`
+	resp.Schema = schema.StacksSchema()
 }
 
 // Read refreshes the Terraform state with the latest data.
 func (d *stacksDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var state StacksDataSourceModel
+	var state model.Stacks
 
 	stacks, _, err := d.client.StacksApi.StackList(context.Background(), nil)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Unable to Read Portainer Stacks",
+			"Unable to Read Portainer Stack",
 			err.Error(),
 		)
 		return
@@ -270,23 +47,23 @@ func (d *stacksDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 	// Map response body to model
 	for _, stack := range stacks {
-		stackState := stacksModel{
+		stackState := model.Stack{
 			AdditionalFiles: nil,
-			AutoUpdate:      stacksAutoUpdateModel{},
+			AutoUpdate:      model.StackAutoUpdate{},
 			EndpointId:      types.Int64Value(int64(stack.EndpointId)),
 			EntryPoint:      types.StringValue(stack.EntryPoint),
 			Env:             nil,
 			Id:              types.Int64Value(int64(stack.Id)),
 			Name:            types.StringValue(stack.Name),
-			Option:          stacksOptionModel{},
-			ResourceControl: stacksResourceControlModel{},
+			Option:          model.StackOption{},
+			ResourceControl: model.StackResourceControl{},
 			Status:          types.Int64Value(int64(stack.Status)),
 			SwarmId:         types.StringValue(stack.SwarmId),
 			Type:            types.Int64Value(int64(stack.Type_)),
 			CreatedBy:       types.StringValue(stack.CreatedBy),
 			CreationDate:    types.Int64Value(int64(stack.CreationDate)),
 			FromAppTemplate: types.BoolValue(stack.FromAppTemplate),
-			GitConfig:       stacksGitConfigModel{},
+			GitConfig:       model.StackGitAuthenticationConfig{},
 			IsComposeFormat: types.BoolValue(stack.IsComposeFormat),
 			Namespace:       types.StringValue(stack.Namespace),
 			ProjectPath:     types.StringValue(stack.ProjectPath),
@@ -309,7 +86,7 @@ func (d *stacksDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		}
 
 		for _, env := range stack.Env {
-			stackState.Env = append(stackState.Env, stacksEnvModel{
+			stackState.Env = append(stackState.Env, model.StackEnvModel{
 				Name:  types.StringValue(env.Name),
 				Value: types.StringValue(env.Value),
 			})
@@ -327,13 +104,13 @@ func (d *stacksDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 			}
 			stackState.ResourceControl.System = types.BoolValue(stack.ResourceControl.System)
 			for _, teamAccess := range stack.ResourceControl.TeamAccesses {
-				stackState.ResourceControl.TeamAccesses = append(stackState.ResourceControl.TeamAccesses, stacksTeamAccessesModel{
+				stackState.ResourceControl.TeamAccesses = append(stackState.ResourceControl.TeamAccesses, model.StackTeamAccesses{
 					AccessLevel: types.Int64Value(int64(teamAccess.AccessLevel)),
 					TeamId:      types.Int64Value(int64(teamAccess.TeamId)),
 				})
 			}
 			for _, userAccess := range stack.ResourceControl.UserAccesses {
-				stackState.ResourceControl.UserAccesses = append(stackState.ResourceControl.UserAccesses, stacksUserAccessesModel{
+				stackState.ResourceControl.UserAccesses = append(stackState.ResourceControl.UserAccesses, model.StackUserAccesses{
 					AccessLevel: types.Int64Value(int64(userAccess.AccessLevel)),
 					UserId:      types.Int64Value(int64(userAccess.UserId)),
 				})
@@ -348,7 +125,7 @@ func (d *stacksDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 			stackState.GitConfig.Url = types.StringValue(stack.GitConfig.Url)
 			stackState.GitConfig.ReferenceName = types.StringValue(stack.GitConfig.ReferenceName)
 			if stack.GitConfig.Authentication != nil {
-				stackState.GitConfig.Authentication = stacksGitAuthenticationModel{
+				stackState.GitConfig.Authentication = model.StackGitAuthentication{
 					GitCredentialID: types.Int64Value(int64(stack.GitConfig.Authentication.GitCredentialID)),
 					Password:        types.StringValue(stack.GitConfig.Authentication.Password),
 					Username:        types.StringValue(stack.GitConfig.Authentication.Username),
