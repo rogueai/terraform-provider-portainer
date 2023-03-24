@@ -3,7 +3,8 @@ package portainer
 import "github.com/hashicorp/terraform-plugin-framework/types"
 
 type Stacks struct {
-	Stacks []Stack `tfsdk:"stacks"`
+	ID     types.String `tfsdk:"id"` // required for acceptance testing
+	Stacks []Stack      `tfsdk:"stacks"`
 }
 
 type StackTeamAccesses struct {

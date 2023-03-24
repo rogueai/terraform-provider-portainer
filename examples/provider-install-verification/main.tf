@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     portainer = {
-      source = "github.com/rogueai/portainer"
+      source = "rogueai/dev/portainer"
     }
   }
 }

@@ -13,6 +13,10 @@ import (
 func stacksDataSourceSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			// required for acceptance testing
+			"id": schema.StringAttribute{
+				Computed: true,
+			},
 			"stacks": schema.ListNestedAttribute{
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
@@ -290,6 +294,9 @@ func (d *stacksDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		state.Stacks = append(state.Stacks, stackState)
 	}
 
+	// required for acceptance testing
+	state.ID = types.StringValue("placeholder")
+
 	// Set state
 	diags := resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -300,7 +307,7 @@ func (d *stacksDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 // Configure adds the provider configured client to the data source.
 func (d *stacksDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
-	tflog.Info(ctx, "Configuring HashiCups client")
+	tflog.Info(ctx, "Configuring Portainer client")
 
 	if req.ProviderData == nil {
 		return

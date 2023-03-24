@@ -40,3 +40,5 @@ override.tf.json
 .terraformrc
 terraform.rc
 terraform
+
+testacc/prism-cli
