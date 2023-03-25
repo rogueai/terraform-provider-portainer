@@ -51,7 +51,7 @@ type StackOption struct {
 
 // Stack maps stacks schema data.
 type Stack struct {
-	ID              types.Int64                   `tfsdk:"id"`
+	ID              types.String                  `tfsdk:"id"`
 	AdditionalFiles []types.String                `tfsdk:"additional_files"`
 	AutoUpdate      *StackAutoUpdate              `tfsdk:"auto_update"`
 	EndpointId      types.Int64                   `tfsdk:"endpoint_id"`
@@ -90,7 +90,7 @@ type StackEnv struct {
 //	Env              []StackEnv   `tfsdk:"env"`
 //	FromAppTemplate  types.Bool   `tfsdk:"from_app_template"`
 //	Name             types.String `tfsdk:"name"`
-//	StackFileContent types.String `tfsdk:"stack_file_content"`
+//	FileContent types.String `tfsdk:"stack_file_content"`
 //	SwarmId          types.String `tfsdk:"swarm_id"`
 //}
 //type StackBodySwarmRepository struct {
@@ -111,7 +111,7 @@ type StackEnv struct {
 //	Env              []StackEnv   `tfsdk:"env"`
 //	FromAppTemplate  types.Bool   `tfsdk:"from_app_template"`
 //	Name             types.String `tfsdk:"name"`
-//	StackFileContent types.String `tfsdk:"stack_file_content"`
+//	FileContent types.String `tfsdk:"stack_file_content"`
 //}
 //type StackBodyComposeRepository struct {
 //	AdditionalFiles          []types.String  `tfsdk:"additional_files"`
@@ -129,7 +129,7 @@ type StackEnv struct {
 //type StackBodyKubernetesString struct {
 //	ComposeFormat    types.Bool   `tfsdk:"compose_format"`
 //	Namespace        types.String `tfsdk:"namespace"`
-//	StackFileContent types.String `tfsdk:"stack_file_content"`
+//	FileContent types.String `tfsdk:"stack_file_content"`
 //	StackName        types.String `tfsdk:"stack_name"`
 //}
 //type StackBodyKubernetesRepository struct {

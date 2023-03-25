@@ -3,19 +3,23 @@ package portainer
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/antihax/optional"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"strconv"
 	"strings"
 	portainer "terraform-provider-portainer/client"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ resource.Resource              = &stackResource{}
-	_ resource.ResourceWithConfigure = &stackResource{}
+	_ resource.Resource                = &stackResource{}
+	_ resource.ResourceWithConfigure   = &stackResource{}
+	_ resource.ResourceWithImportState = &stackResource{}
 )
 
 // NewStackResource is a helper function to simplify the provider implementation.
@@ -47,6 +51,11 @@ func (r *stackResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 	resp.Schema = stackResourceSchema()
 }
 
+func (r *stackResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	// Retrieve import ID and save to id attribute
+	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
 // Create creates the resource and sets the initial Terraform state.
 func (r *stackResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	// Retrieve values from plan
@@ -68,48 +77,31 @@ func (r *stackResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 	jsonEnv := sb.String()
-	//var file *os.File
-	//if !plan.File.IsNull() {
-	//	file, err = os.Open(plan.File.ValueString())
-	//	if err != nil {
-	//		resp.Diagnostics.AddError(
-	//			"Error creating stack",
-	//			"Could not create stack, unexpected error: "+err.Error(),
-	//		)
-	//		return
-	//	}
-	//}
 
 	bodySwarmString := portainer.StacksSwarmStackFromFileContentPayload{
-		Env:              nil,
+		Env:              []portainer.PortainerPair{},
 		FromAppTemplate:  plan.FromAppTemplate.ValueBool(),
 		Name:             plan.Name.ValueString(),
 		StackFileContent: plan.FileContent.ValueString(),
 		SwarmID:          plan.SwarmId.ValueString(),
 	}
-	//bodySwamRepository := portainer.StacksSwarmStackFromGitRepositoryPayload{}
-	//bodyComposeStringSchema := portainer.StacksComposeStackFromFileContentPayload{}
-	//bodyComposeRepositorySchema := portainer.StacksComposeStackFromGitRepositoryPayload{}
-	//bodyKubernetesStringSchema := portainer.StacksKubernetesStringDeploymentPayload{}
-	//bodyKubernetesRepositorySchema := portainer.StacksKubernetesGitDeploymentPayload{}
-	// bodyKubernetesUrlSchema := portainer.StacksKubernetesManifestUrlDeploymentPayload{}
 	localVarOptionals := portainer.StacksApiStackCreateOpts{
 		BodySwarmString:          optional.NewInterface(bodySwarmString),
-		BodySwarmRepository:      optional.EmptyInterface(), //optional.EmptyInterface()NewInterface(bodySwamRepository),
-		BodyComposeString:        optional.EmptyInterface(), //optional.NewInterface(bodyComposeStringSchema),
-		BodyComposeRepository:    optional.EmptyInterface(), //optional.NewInterface(bodyComposeRepositorySchema),
-		BodyKubernetesString:     optional.EmptyInterface(), //optional.NewInterface(bodyKubernetesStringSchema),
-		BodyKubernetesRepository: optional.EmptyInterface(), //optional.NewInterface(bodyKubernetesRepositorySchema),
-		BodyKubernetesUrl:        optional.EmptyInterface(), //optional.NewInterface(bodyKubernetesUrlSchema),
+		BodySwarmRepository:      optional.EmptyInterface(),
+		BodyComposeString:        optional.EmptyInterface(),
+		BodyComposeRepository:    optional.EmptyInterface(),
+		BodyKubernetesString:     optional.EmptyInterface(),
+		BodyKubernetesRepository: optional.EmptyInterface(),
+		BodyKubernetesUrl:        optional.EmptyInterface(),
 		Name:                     optional.NewString(plan.Name.ValueString()),
 		SwarmID:                  optional.NewString(plan.SwarmId.ValueString()),
 		Env:                      optional.NewString(jsonEnv),
-		File:                     optional.EmptyInterface(), //optional.NewInterface(file),
+		File:                     optional.EmptyInterface(),
 	}
 
 	// Create new stack
 	type_ := int32(plan.Type.ValueInt64())
-	//method := plan.Method.ValueString()
+	// TODO we only support string stack content for now
 	method := "string"
 	endpointId := int32(plan.EndpointId.ValueInt64())
 	res, _, err := r.client.StacksApi.StackCreate(ctx, type_, method, endpointId, &localVarOptionals)
@@ -121,9 +113,10 @@ func (r *stackResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	plan.ID = types.Int64Value(int64(res.Id))
+	plan.ID = types.StringValue(fmt.Sprint(res.Id))
+	stackId, _ := strconv.Atoi(plan.ID.ValueString())
 	// Get refreshed stack value from Portainer
-	stack, _, err := r.client.StacksApi.StackInspect(ctx, int32(plan.ID.ValueInt64()))
+	stack, _, err := r.client.StacksApi.StackInspect(ctx, int32(stackId))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Portainer Stack",
@@ -140,6 +133,8 @@ func (r *stackResource) Create(ctx context.Context, req resource.CreateRequest, 
 	plan.ProjectPath = types.StringValue(stack.ProjectPath)
 	plan.IsComposeFormat = types.BoolValue(stack.IsComposeFormat)
 	plan.FromAppTemplate = types.BoolValue(stack.FromAppTemplate)
+
+	//plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
@@ -159,7 +154,8 @@ func (r *stackResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	}
 
 	// Get refreshed stack value from Portainer
-	stack, _, err := r.client.StacksApi.StackInspect(ctx, int32(state.ID.ValueInt64()))
+	stackId, _ := strconv.Atoi(state.ID.ValueString())
+	stack, _, err := r.client.StacksApi.StackInspect(ctx, int32(stackId))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Portainer Stack",
@@ -167,6 +163,8 @@ func (r *stackResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		)
 		return
 	}
+
+	state.ID = types.StringValue(fmt.Sprint(stack.Id))
 
 	state.CreatedBy = types.StringValue(stack.CreatedBy)
 	state.CreationDate = types.Int64Value(int64(stack.CreationDate))
@@ -176,6 +174,16 @@ func (r *stackResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	state.ProjectPath = types.StringValue(stack.ProjectPath)
 	state.IsComposeFormat = types.BoolValue(stack.IsComposeFormat)
 	state.FromAppTemplate = types.BoolValue(stack.FromAppTemplate)
+
+	stackFileContent, _, err := r.client.StacksApi.StackFileInspect(ctx, int32(stackId))
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Portainer Stack file content",
+			"Could not read Portainer stack ID "+state.ID.String()+": "+err.Error(),
+		)
+		return
+	}
+	state.FileContent = types.StringValue(stackFileContent.StackFileContent)
 
 	// Set refreshed state
 	diags = resp.State.Set(ctx, &state)
@@ -187,10 +195,98 @@ func (r *stackResource) Read(ctx context.Context, req resource.ReadRequest, resp
 
 // Update updates the resource and sets the updated Terraform state on success.
 func (r *stackResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	// Retrieve values from plan
+	var plan Stack
+	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	stackId, _ := strconv.Atoi(plan.ID.ValueString())
+	//endpointId := int32(plan.EndpointId.ValueInt64())
+
+	stackUpdateBody := portainer.StacksUpdateSwarmStackPayload{
+		StackFileContent: plan.FileContent.ValueString(),
+		Env:              []portainer.PortainerPair{},
+		Prune:            true,
+		PullImage:        true,
+	}
+	localVarOptionals := portainer.StacksApiStackUpdateOpts{
+		//EndpointId: optional.NewInt32(endpointId),
+	}
+	res, _, err := r.client.StacksApi.StackUpdate(ctx, int32(stackId), stackUpdateBody, &localVarOptionals)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error creating stack",
+			"Could not create stack, unexpected error: "+err.Error(),
+		)
+		return
+	}
+
+	plan.ID = types.StringValue(fmt.Sprint(res.Id))
+
+	// Get refreshed stack value from Portainer
+	stack, _, err := r.client.StacksApi.StackInspect(ctx, int32(stackId))
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Portainer Stack",
+			"Could not read Portainer stack ID "+plan.ID.String()+": "+err.Error(),
+		)
+		return
+	}
+	plan.CreatedBy = types.StringValue(stack.CreatedBy)
+	plan.CreationDate = types.Int64Value(int64(stack.CreationDate))
+	plan.UpdatedBy = types.StringValue(stack.UpdatedBy)
+	plan.UpdateDate = types.Int64Value(int64(stack.UpdateDate))
+	plan.Status = types.Int64Value(int64(stack.Status))
+	plan.ProjectPath = types.StringValue(stack.ProjectPath)
+	plan.IsComposeFormat = types.BoolValue(stack.IsComposeFormat)
+	plan.FromAppTemplate = types.BoolValue(stack.FromAppTemplate)
+
+	stackFileContent, _, err := r.client.StacksApi.StackFileInspect(ctx, int32(stackId))
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Reading Portainer Stack file content",
+			"Could not read Portainer stack ID "+plan.ID.String()+": "+err.Error(),
+		)
+		return
+	}
+	plan.FileContent = types.StringValue(stackFileContent.StackFileContent)
+
+	//plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
+
+	diags = resp.State.Set(ctx, plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }
 
 // Delete deletes the resource and removes the Terraform state on success.
 func (r *stackResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var state Stack
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	stackId, _ := strconv.Atoi(state.ID.ValueString())
+	//endpointId := int32(state.EndpointId.ValueInt64())
+	localVarOptions := portainer.StacksApiStackDeleteOpts{
+		//	EndpointId: optional.NewInt32(endpointId),
+		//	External: optional.NewBool(false),
+	}
+	// Delete existing order
+	_, err := r.client.StacksApi.StackDelete(ctx, int32(stackId), &localVarOptions)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Error Deleting HashiCups Order",
+			"Could not delete order, unexpected error: "+err.Error(),
+		)
+		return
+	}
 }
 
 //func bodySwarmStringSchema() schema.SingleNestedAttribute {
@@ -406,6 +502,12 @@ func (r *stackResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 func stackResourceSchema() schema.Schema {
 	return schema.Schema{
 		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed: true,
+			},
+			//"last_updated": schema.StringAttribute{
+			//	Computed: true,
+			//},
 			"additional_files": schema.ListAttribute{
 				Optional:    true,
 				ElementType: types.StringType,
@@ -437,9 +539,6 @@ func stackResourceSchema() schema.Schema {
 					},
 				},
 			},
-			"id": schema.Int64Attribute{
-				Computed: true,
-			},
 			"name": schema.StringAttribute{
 				Required: true,
 			},
@@ -459,26 +558,26 @@ func stackResourceSchema() schema.Schema {
 					"public":              schema.BoolAttribute{Optional: true},
 					"resource_id":         schema.StringAttribute{Optional: true},
 					"sub_resource_ids": schema.ListAttribute{
-						Computed:    true,
+						Optional:    true,
 						ElementType: types.StringType,
 					},
 					"system": schema.BoolAttribute{Optional: true},
 					"team_accesses": schema.ListNestedAttribute{
-						Computed: true,
+						Optional: true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
-								"access_level": schema.Int64Attribute{Optional: true},
-								"team_id":      schema.Int64Attribute{Optional: true},
+								"access_level": schema.Int64Attribute{Required: true},
+								"team_id":      schema.Int64Attribute{Required: true},
 							},
 						},
 					},
 					"type": schema.Int64Attribute{Optional: true},
 					"user_accesses": schema.ListNestedAttribute{
-						Computed: true,
+						Optional: true,
 						NestedObject: schema.NestedAttributeObject{
 							Attributes: map[string]schema.Attribute{
-								"access_level": schema.Int64Attribute{Optional: true},
-								"user_id":      schema.Int64Attribute{Optional: true},
+								"access_level": schema.Int64Attribute{Required: true},
+								"user_id":      schema.Int64Attribute{Required: true},
 							},
 						},
 					},

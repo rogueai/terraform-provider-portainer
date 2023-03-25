@@ -2,6 +2,7 @@ package portainer
 
 import (
 	"context"
+	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -52,7 +53,7 @@ func stacksDataSourceSchema() schema.Schema {
 								},
 							},
 						},
-						"id": schema.Int64Attribute{
+						"id": schema.StringAttribute{
 							Computed: true,
 						},
 						"name": schema.StringAttribute{
@@ -205,7 +206,7 @@ func (d *stacksDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 			EndpointId:      types.Int64Value(int64(stack.EndpointId)),
 			EntryPoint:      types.StringValue(stack.EntryPoint),
 			Env:             nil,
-			ID:              types.Int64Value(int64(stack.Id)),
+			ID:              types.StringValue(fmt.Sprint(stack.Id)),
 			Name:            types.StringValue(stack.Name),
 			Option:          nil,
 			ResourceControl: &StackResourceControl{},
