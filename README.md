@@ -1,44 +1,20 @@
 # Terraform Provider Portainer
 
+[![Build](https://github.com/rogueai/terraform-provider-portainer/actions/workflows/go.yml/badge.svg)](https://github.com/rogueai/terraform-provider-portainer/actions/workflows/go.yml)
+
+> Disclaimer: This provider is still a work in progress: do not use it in any production setting. 
+> Expect missing attributes, wrong updates, sudden changes in resource schema, etc.
+
+## Status
+
+Currently, the provider is able to manage only Swarm environments, with plain docker compose environments being next in line.
+
+There are quite a few missing things: Environment Variables are not mapped, and the same applies for Resource Control attributes.
+
 ## Examples
-### Provider init
-```terraform
-terraform {
-  required_providers {
-    portainer = {
-      source = "rogueai/dev/portainer"
-    }
-  }
-}
 
-provider "portainer" {
-  host    = "<portainer_host>/api"
-  api_key = "<portainer_api_key>"
-}
-```
+Generated documentation is available, along with basic examples, under the `docs` folder.
 
-### Stacks data source
-```terraform
-
-data "portainer_stacks" "list" {}
-
-output "stacks" {
-  value = data.portainer_stacks.list
-}
-```
-
-### Stack resource creation
-
-```terraform
-resource "portainer_stack" "terraform_test" {
-  type              = 1
-  endpoint_id       = 2
-  name              = "terraform_test"
-  file_content      = file("docker-compose.yml")
-  swarm_id          = "abcdefgh"
-
-}
-```
 ## Build provider
 
 Run the following command to build the provider
