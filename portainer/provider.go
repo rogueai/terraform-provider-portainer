@@ -34,13 +34,16 @@ func (p *portainerProvider) Metadata(_ context.Context, _ provider.MetadataReque
 // Schema defines the provider-level schema for configuration data.
 func (p *portainerProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Portainer provider.",
 		Attributes: map[string]schema.Attribute{
 			"host": schema.StringAttribute{
-				Optional: true,
+				Description: "URI for Portainer API. May also be provided via PORTAINER_HOST environment variable.",
+				Optional:    true,
 			},
 			"api_key": schema.StringAttribute{
-				Optional:  true,
-				Sensitive: true,
+				Description: "Api Key for Portainer API. May also be provided via PORTAINER_APIKEY environment variable.",
+				Optional:    true,
+				Sensitive:   true,
 			},
 		},
 	}

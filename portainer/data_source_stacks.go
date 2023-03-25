@@ -13,13 +13,16 @@ import (
 
 func stacksDataSourceSchema() schema.Schema {
 	return schema.Schema{
+		Description: "Fetches the list of stacks.",
 		Attributes: map[string]schema.Attribute{
 			// required for acceptance testing
 			"id": schema.StringAttribute{
-				Computed: true,
+				Description: "Placeholder identifier attribute.",
+				Computed:    true,
 			},
 			"stacks": schema.ListNestedAttribute{
-				Computed: true,
+				Description: "List of stacks.",
+				Computed:    true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"additional_files": schema.ListAttribute{
