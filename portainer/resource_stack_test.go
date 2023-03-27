@@ -14,37 +14,47 @@ func TestAccResourceStackSwarm(t *testing.T) {
 			{
 				Config: providerConfig + `
 resource "portainer_stack" "test" {
-  type              = 1
-  endpoint_id       = 2
-  name              = "terraform_test"
+  type              = 2
+  endpoint_id       = 1
+  name              = "myStack"
   file_content      = "version: 3\n services:\n web:\n image:nginx"
-  swarm_id          = "abcdefgh"
+  swarm_id          = "jpofkc0i9uo9wtx1zesuk649w"
+  namespace		    = ""
+  env				= [{
+	"name": "name"
+	"value": "value"	
+  }]
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("portainer_stack.test", "name", "terraform_test"),
+					resource.TestCheckResourceAttr("portainer_stack.test", "name", "myStack"),
 					// Verify dynamic values have any value set in the state.
 					resource.TestCheckResourceAttrSet("portainer_stack.test", "id"),
 				),
 			},
 			// ImportState testing
-			//{
-			//	ResourceName:      "portainer_stack.test",
-			//	ImportState:       true,
-			//	ImportStateVerify: true,
-			//	// The last_updated attribute does not exist in the Portainer
-			//	// API, therefore there is no value for it during import.
-			//	// ImportStateVerifyIgnore: []string{"last_updated"},
-			//},
+			{
+				ResourceName:      "portainer_stack.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				// The last_updated attribute does not exist in the Portainer
+				// API, therefore there is no value for it during import.
+				// ImportStateVerifyIgnore: []string{"last_updated"},
+			},
 			// Update and Read testing
 			{
 				Config: providerConfig + `
 resource "portainer_stack" "test" {
-  type              = 1
-  endpoint_id       = 2
-  name              = "terraform_test"
+  type              = 2
+  endpoint_id       = 1
+  name              = "myStack"
   file_content      = "version: 3\n services:\n web:\n image:nginx"
-  swarm_id          = "abcdefgh"
+  swarm_id          = "jpofkc0i9uo9wtx1zesuk649w"
+  namespace		    = ""
+  env				= [{
+	"name": "name"
+	"value": "value"	
+  }]
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(

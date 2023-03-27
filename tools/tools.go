@@ -1,3 +1,6 @@
+//go:build tfplugindocs
+
+// https://github.com/hashicorp/terraform-provider-hashicups/issues/60
 package tools
 
 import (

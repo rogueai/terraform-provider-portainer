@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"strconv"
 	"strings"
 	portainer "terraform-provider-portainer/client"
@@ -125,16 +126,7 @@ func (r *stackResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	plan.CreatedBy = types.StringValue(stack.CreatedBy)
-	plan.CreationDate = types.Int64Value(int64(stack.CreationDate))
-	plan.UpdatedBy = types.StringValue(stack.UpdatedBy)
-	plan.UpdateDate = types.Int64Value(int64(stack.UpdateDate))
-	plan.Status = types.Int64Value(int64(stack.Status))
-	plan.ProjectPath = types.StringValue(stack.ProjectPath)
-	plan.IsComposeFormat = types.BoolValue(stack.IsComposeFormat)
-	plan.FromAppTemplate = types.BoolValue(stack.FromAppTemplate)
-
-	//plan.LastUpdated = types.StringValue(time.Now().Format(time.RFC850))
+	updateStack(&plan, &stack)
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
@@ -166,15 +158,9 @@ func (r *stackResource) Read(ctx context.Context, req resource.ReadRequest, resp
 
 	state.ID = types.StringValue(fmt.Sprint(stack.Id))
 
-	state.CreatedBy = types.StringValue(stack.CreatedBy)
-	state.CreationDate = types.Int64Value(int64(stack.CreationDate))
-	state.UpdatedBy = types.StringValue(stack.UpdatedBy)
-	state.UpdateDate = types.Int64Value(int64(stack.UpdateDate))
-	state.Status = types.Int64Value(int64(stack.Status))
-	state.ProjectPath = types.StringValue(stack.ProjectPath)
-	state.IsComposeFormat = types.BoolValue(stack.IsComposeFormat)
-	state.FromAppTemplate = types.BoolValue(stack.FromAppTemplate)
+	updateStack(&state, &stack)
 
+	tflog.Debug(ctx, "Fetching stack file content")
 	stackFileContent, _, err := r.client.StacksApi.StackFileInspect(ctx, int32(stackId))
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -235,14 +221,8 @@ func (r *stackResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		)
 		return
 	}
-	plan.CreatedBy = types.StringValue(stack.CreatedBy)
-	plan.CreationDate = types.Int64Value(int64(stack.CreationDate))
-	plan.UpdatedBy = types.StringValue(stack.UpdatedBy)
-	plan.UpdateDate = types.Int64Value(int64(stack.UpdateDate))
-	plan.Status = types.Int64Value(int64(stack.Status))
-	plan.ProjectPath = types.StringValue(stack.ProjectPath)
-	plan.IsComposeFormat = types.BoolValue(stack.IsComposeFormat)
-	plan.FromAppTemplate = types.BoolValue(stack.FromAppTemplate)
+
+	updateStack(&plan, &stack)
 
 	stackFileContent, _, err := r.client.StacksApi.StackFileInspect(ctx, int32(stackId))
 	if err != nil {
@@ -289,215 +269,56 @@ func (r *stackResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	}
 }
 
-//func bodySwarmStringSchema() schema.SingleNestedAttribute {
-//	return schema.SingleNestedAttribute{
-//		Optional: true,
-//		Attributes: map[string]schema.Attribute{
-//			"env": schema.ListNestedAttribute{
-//				Optional: true,
-//				NestedObject: schema.NestedAttributeObject{
-//					Attributes: map[string]schema.Attribute{
-//						"name":  schema.StringAttribute{Optional: true},
-//						"value": schema.StringAttribute{Optional: true},
-//					},
-//				},
-//			},
-//			"from_app_template":  schema.BoolAttribute{Optional: true},
-//			"name":               schema.StringAttribute{Optional: true},
-//			"stack_file_content": schema.StringAttribute{Optional: true},
-//			"swarm_id":           schema.StringAttribute{Optional: true},
-//		},
-//	}
-//}
-//
-//func bodySwarmRepositorySchema() schema.SingleNestedAttribute {
-//	return schema.SingleNestedAttribute{
-//		Optional: true,
-//		Attributes: map[string]schema.Attribute{
-//			"additional_files": schema.ListAttribute{
-//				Optional:    true,
-//				ElementType: types.StringType,
-//			},
-//			"auto_update": schema.SingleNestedAttribute{
-//				Optional: true,
-//				Attributes: map[string]schema.Attribute{
-//					"interval": schema.StringAttribute{Optional: true},
-//					"job_id":   schema.StringAttribute{Optional: true},
-//					"webhook":  schema.StringAttribute{Optional: true},
-//				},
-//			},
-//			"compose_file": schema.StringAttribute{Optional: true},
-//			"env": schema.ListNestedAttribute{
-//				Optional: true,
-//				NestedObject: schema.NestedAttributeObject{
-//					Attributes: map[string]schema.Attribute{
-//						"name":  schema.StringAttribute{Optional: true},
-//						"value": schema.StringAttribute{Optional: true},
-//					},
-//				},
-//			},
-//			"from_app_template":         schema.BoolAttribute{Optional: true},
-//			"name":                      schema.StringAttribute{Optional: true},
-//			"repository_authentication": schema.BoolAttribute{Optional: true},
-//			"repository_password":       schema.StringAttribute{Optional: true, Sensitive: true},
-//			"repository_reference_name": schema.StringAttribute{Optional: true},
-//			"repository_url":            schema.StringAttribute{Optional: true},
-//			"repository_username":       schema.StringAttribute{Optional: true},
-//			"swarm_id":                  schema.StringAttribute{Optional: true},
-//		},
-//	}
-//}
-//
-//func bodyComposeStringSchema() schema.SingleNestedAttribute {
-//	return schema.SingleNestedAttribute{
-//		Optional: true,
-//		Attributes: map[string]schema.Attribute{
-//			"env": schema.ListNestedAttribute{
-//				Optional: true,
-//				NestedObject: schema.NestedAttributeObject{
-//					Attributes: map[string]schema.Attribute{
-//						"name":  schema.StringAttribute{Optional: true},
-//						"value": schema.StringAttribute{Optional: true},
-//					},
-//				},
-//			},
-//			"from_app_template":  schema.BoolAttribute{Optional: true},
-//			"name":               schema.StringAttribute{Optional: true},
-//			"stack_file_content": schema.StringAttribute{Optional: true},
-//		},
-//	}
-//}
-//
-//func bodyComposeRepositorySchema() schema.SingleNestedAttribute {
-//	return schema.SingleNestedAttribute{
-//		Optional: true,
-//		Attributes: map[string]schema.Attribute{
-//			"additional_files": schema.ListAttribute{
-//				Optional:    true,
-//				ElementType: types.StringType,
-//			},
-//			"auto_update": schema.SingleNestedAttribute{
-//				Optional: true,
-//				Attributes: map[string]schema.Attribute{
-//					"interval": schema.StringAttribute{Optional: true},
-//					"job_id":   schema.StringAttribute{Optional: true},
-//					"webhook":  schema.StringAttribute{Optional: true},
-//				},
-//			},
-//			"compose_file": schema.StringAttribute{Optional: true},
-//			"env": schema.ListNestedAttribute{
-//				Optional: true,
-//				NestedObject: schema.NestedAttributeObject{
-//					Attributes: map[string]schema.Attribute{
-//						"name":  schema.StringAttribute{Optional: true},
-//						"value": schema.StringAttribute{Optional: true},
-//					},
-//				},
-//			},
-//			"from_app_template":         schema.BoolAttribute{Optional: true},
-//			"name":                      schema.StringAttribute{Optional: true},
-//			"repository_authentication": schema.BoolAttribute{Optional: true},
-//			"repository_password":       schema.StringAttribute{Optional: true, Sensitive: true},
-//			"repository_reference_name": schema.StringAttribute{Optional: true},
-//			"repository_url":            schema.StringAttribute{Optional: true},
-//			"repository_username":       schema.StringAttribute{Optional: true},
-//		},
-//	}
-//}
-//
-//func bodyKubernetesStringSchema() schema.SingleNestedAttribute {
-//	return schema.SingleNestedAttribute{
-//		Optional: true,
-//		Attributes: map[string]schema.Attribute{
-//			"compose_format":     schema.BoolAttribute{Optional: true},
-//			"namespace":          schema.StringAttribute{Optional: true},
-//			"stack_file_content": schema.StringAttribute{Optional: true},
-//			"stack_name":         schema.StringAttribute{Optional: true},
-//		},
-//	}
-//}
-//
-//func bodyKubernetesRepositorySchema() schema.SingleNestedAttribute {
-//	return schema.SingleNestedAttribute{
-//		Optional: true,
-//		Attributes: map[string]schema.Attribute{
-//			"additional_files": schema.ListAttribute{
-//				Optional:    true,
-//				ElementType: types.StringType,
-//			},
-//			"auto_update": schema.SingleNestedAttribute{
-//				Optional: true,
-//				Attributes: map[string]schema.Attribute{
-//					"interval": schema.StringAttribute{Optional: true},
-//					"job_id":   schema.StringAttribute{Optional: true},
-//					"webhook":  schema.StringAttribute{Optional: true},
-//				},
-//			},
-//			"compose_format":            schema.BoolAttribute{Optional: true},
-//			"manifest_file":             schema.StringAttribute{Optional: true},
-//			"namespace":                 schema.StringAttribute{Optional: true},
-//			"repository_authentication": schema.BoolAttribute{Optional: true},
-//			"repository_password":       schema.StringAttribute{Optional: true, Sensitive: true},
-//			"repository_reference_name": schema.StringAttribute{Optional: true},
-//			"repository_url":            schema.StringAttribute{Optional: true},
-//			"repository_username":       schema.StringAttribute{Optional: true},
-//			"stack_name":                schema.StringAttribute{Optional: true},
-//		},
-//	}
-//}
-//
-//func bodyKubernetesUrlSchema() schema.SingleNestedAttribute {
-//	return schema.SingleNestedAttribute{
-//		Optional: true,
-//		Attributes: map[string]schema.Attribute{
-//			"compose_format": schema.BoolAttribute{Optional: true},
-//			"manifest_url":   schema.StringAttribute{Optional: true},
-//			"namespace":      schema.StringAttribute{Optional: true},
-//			"stack_name":     schema.StringAttribute{Optional: true},
-//		},
-//	}
-//}
-//
-//func stackResourceSchema() schema.Schema {
-//	return schema.Schema{
-//		Attributes: map[string]schema.Attribute{
-//			"type": schema.Int64Attribute{
-//				Required: true,
-//			},
-//			"method": schema.StringAttribute{
-//				Required: true,
-//			},
-//			"endpoint_id": schema.Int64Attribute{
-//				Required: true,
-//			},
-//			"body_swarm_string":          bodySwarmStringSchema(),
-//			"body_swarm_repository":      bodySwarmRepositorySchema(),
-//			"body_compose_string":        bodyComposeStringSchema(),
-//			"body_compose_repository":    bodyComposeRepositorySchema(),
-//			"body_kubernetes_string":     bodyKubernetesStringSchema(),
-//			"body_kubernetes_repository": bodyKubernetesRepositorySchema(),
-//			"body_kubernetes_url":        bodyKubernetesUrlSchema(),
-//			"name": schema.StringAttribute{
-//				Optional: true,
-//			},
-//			"swarm_id": schema.StringAttribute{
-//				Optional: true,
-//			},
-//			"env": schema.ListNestedAttribute{
-//				Optional: true,
-//				NestedObject: schema.NestedAttributeObject{
-//					Attributes: map[string]schema.Attribute{
-//						"name":  schema.StringAttribute{Optional: true},
-//						"value": schema.StringAttribute{Optional: true},
-//					},
-//				},
-//			},
-//			"file": schema.StringAttribute{
-//				Optional: true,
-//			},
-//		},
-//	}
-//}
+func updateStack(plan *Stack, stack *portainer.PortainerStack) {
+	plan.AutoUpdate = nil
+	plan.EndpointId = types.Int64Value(int64(stack.EndpointId))
+	plan.EntryPoint = types.StringValue(stack.EntryPoint)
+	plan.Env = nil
+	plan.ID = types.StringValue(fmt.Sprint(stack.Id))
+	plan.Name = types.StringValue(stack.Name)
+	plan.Option = nil
+	plan.ResourceControl = nil
+	plan.Status = types.Int64Value(int64(stack.Status))
+	plan.SwarmId = types.StringValue(stack.SwarmId)
+	plan.Type = types.Int64Value(int64(stack.Type_))
+	plan.CreatedBy = types.StringValue(stack.CreatedBy)
+	plan.CreationDate = types.Int64Value(int64(stack.CreationDate))
+	plan.FromAppTemplate = types.BoolValue(stack.FromAppTemplate)
+	plan.GitConfig = nil
+	plan.IsComposeFormat = types.BoolValue(stack.IsComposeFormat)
+	plan.Namespace = types.StringValue(stack.Namespace)
+	plan.ProjectPath = types.StringValue(stack.ProjectPath)
+	plan.UpdateDate = types.Int64Value(int64(stack.UpdateDate))
+	plan.UpdatedBy = types.StringValue(stack.UpdatedBy)
+
+	for _, additionalFile := range stack.AdditionalFiles {
+		plan.AdditionalFiles = append(plan.AdditionalFiles, types.StringValue(additionalFile))
+	}
+
+	if stack.AutoUpdate != nil {
+		autoUpdate := StackAutoUpdate{
+			Interval: types.StringValue(stack.AutoUpdate.Interval),
+			JobID:    types.StringValue(stack.AutoUpdate.JobID),
+			Webhook:  types.StringValue(stack.AutoUpdate.Webhook),
+		}
+		plan.AutoUpdate = &autoUpdate
+	}
+
+	if stack.Option != nil {
+		option := StackOption{
+			Prune: types.BoolValue(stack.Option.Prune),
+		}
+		plan.Option = &option
+	}
+
+	for _, env := range stack.Env {
+		plan.Env = append(plan.Env, StackEnv{
+			Name:  types.StringValue(env.Name),
+			Value: types.StringValue(env.Value),
+		})
+	}
+
+}
 
 func stackResourceSchema() schema.Schema {
 	return schema.Schema{
@@ -505,9 +326,6 @@ func stackResourceSchema() schema.Schema {
 			"id": schema.StringAttribute{
 				Computed: true,
 			},
-			//"last_updated": schema.StringAttribute{
-			//	Computed: true,
-			//},
 			"additional_files": schema.ListAttribute{
 				Optional:    true,
 				ElementType: types.StringType,
@@ -524,7 +342,7 @@ func stackResourceSchema() schema.Schema {
 				Required: true,
 			},
 			"entry_point": schema.StringAttribute{
-				Optional: true,
+				Computed: true,
 			},
 			"env": schema.ListNestedAttribute{
 				Optional: true,
@@ -548,6 +366,7 @@ func stackResourceSchema() schema.Schema {
 					"prune": types.BoolType,
 				},
 			},
+			// TODO unmapped
 			"resource_control": schema.SingleNestedAttribute{
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
@@ -601,6 +420,7 @@ func stackResourceSchema() schema.Schema {
 			"from_app_template": schema.BoolAttribute{
 				Computed: true,
 			},
+			// TODO unmapped
 			"git_config": schema.SingleNestedAttribute{
 				Optional: true,
 				Attributes: map[string]schema.Attribute{
