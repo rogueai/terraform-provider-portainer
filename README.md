@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/rogueai/terraform-provider-portainer/actions/workflows/go.yml/badge.svg)](https://github.com/rogueai/terraform-provider-portainer/actions/workflows/go.yml)
 
-> Disclaimer: This provider is still a work in progress: do not use it in any production setting. 
+> Disclaimer: This provider is still a work in progress: do not use it in any production setting.
 > Expect missing attributes, wrong updates, sudden changes in resource schema, etc.
 
 ## Status
@@ -10,6 +10,13 @@
 Currently, the provider is able to manage only Swarm environments, with plain docker compose environments being next in line.
 
 There are quite a few missing things: Environment Variables are not mapped, and the same applies for Resource Control attributes.
+
+## Available Resources
+
+These are the resources that are currently being worked on:
+
+- Stack
+- Secret
 
 ## Examples
 
@@ -31,7 +38,7 @@ First, build and install the provider.
 $ make install
 ```
 
-Then, navigate to the `examples` directory. 
+Then, navigate to the `examples` directory.
 
 ```shell
 $ cd examples
