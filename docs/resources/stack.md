@@ -38,7 +38,6 @@ resource "portainer_stack" "example" {
 
 - `additional_files` (List of String)
 - `auto_update` (Attributes) (see [below for nested schema](#nestedatt--auto_update))
-- `entry_point` (String)
 - `env` (Attributes List) (see [below for nested schema](#nestedatt--env))
 - `git_config` (Attributes) (see [below for nested schema](#nestedatt--git_config))
 - `namespace` (String)
@@ -49,6 +48,7 @@ resource "portainer_stack" "example" {
 
 - `created_by` (String)
 - `creation_date` (Number)
+- `entry_point` (String)
 - `from_app_template` (Boolean)
 - `id` (String) The ID of this resource.
 - `is_compose_format` (Boolean)

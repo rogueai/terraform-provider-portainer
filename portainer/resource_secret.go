@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/antihax/optional"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	dockerApi "terraform-provider-portainer/client/docker"
+	customValidator "terraform-provider-portainer/portainer/validator"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -48,11 +49,6 @@ func (r *secretResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 	resp.Schema = secretResourceSchema()
 }
 
-func (r *secretResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	// Retrieve import ID and save to id attribute
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
-}
-
 // Create creates the resource and sets the initial Terraform state.
 func (r *secretResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	// Retrieve values from plan
@@ -65,7 +61,9 @@ func (r *secretResource) Create(ctx context.Context, req resource.CreateRequest,
 
 	// Create new secret
 	labels := map[string]string{}
-	_ = plan.Labels.ElementsAs(ctx, labels, false)
+	diags = plan.Labels.ElementsAs(ctx, &labels, false)
+	resp.Diagnostics.Append(diags...)
+
 	secretCreateOpts := dockerApi.SecretApiSecretCreateOpts{
 		Body: optional.NewInterface(dockerApi.SecretSpec{
 			Name:   plan.Name.ValueString(),
@@ -132,6 +130,8 @@ func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, res
 	state.ID = types.StringValue(secret.ID)
 	state.Name = types.StringValue(secret.Spec.Name)
 	state.Version = types.Int64Value(int64(secret.Version.Index))
+	state.Labels, diags = types.MapValueFrom(ctx, types.StringType, secret.Spec.Labels)
+	resp.Diagnostics.Append(diags...)
 
 	// Set refreshed state
 	diags = resp.State.Set(ctx, &state)
@@ -144,8 +144,10 @@ func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, res
 // Update updates the resource and sets the updated Terraform state on success.
 func (r *secretResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	// Retrieve values from plan
-	var plan Secret
+	var plan, state Secret
 	diags := req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	diags = req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -157,19 +159,23 @@ func (r *secretResource) Update(ctx context.Context, req resource.UpdateRequest,
 	r.data.dockerClient.ChangeBasePath(r.data.host + "/endpoints/" + fmt.Sprint(endpointId) + "/docker")
 
 	labels := map[string]string{}
-	_ = plan.Labels.ElementsAs(ctx, labels, false)
+	diags = plan.Labels.ElementsAs(ctx, &labels, false)
+	resp.Diagnostics.Append(diags...)
+
 	secretUpdateOpts := dockerApi.SecretApiSecretUpdateOpts{
 		Body: optional.NewInterface(dockerApi.SecretSpec{
 			Name:   plan.Name.ValueString(),
-			Data:   plan.Data.ValueString(),
 			Labels: labels,
 		}),
 	}
-	_, err := r.data.dockerClient.SecretApi.SecretUpdate(ctx, secretId, plan.Version.ValueInt64(), &secretUpdateOpts)
+	// get Version from state instead of plan, as computed attribute are not part of the plan
+	// we can't use UseStateForUnknown, as that implies the attribute not changing
+	version := state.Version.ValueInt64()
+	_, err := r.data.dockerClient.SecretApi.SecretUpdate(ctx, secretId, version, &secretUpdateOpts)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error creating Secret",
-			"Could not create secret, unexpected error: "+err.Error(),
+			"Error updating Secret",
+			"Could not update secret, unexpected error: "+err.Error(),
 		)
 		return
 	}
@@ -221,15 +227,20 @@ func secretResourceSchema() schema.Schema {
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
 			},
 			"endpoint_id": schema.Int64Attribute{
-				Required: true,
+				Required:    true,
+				Description: "Endpoint ID.",
 			},
 			"name": schema.StringAttribute{
 				Required: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
+				Description: "User-defined name of the secret.",
 			},
 			"data": schema.StringAttribute{
 				Required:  true,
@@ -237,13 +248,19 @@ func secretResourceSchema() schema.Schema {
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
+				Validators: []validator.String{
+					customValidator.StringBase64(),
+				},
+				Description: "Base64-url-safe-encoded (RFC 4648) data to store as secret.",
 			},
 			"labels": schema.MapAttribute{
 				Optional:    true,
 				ElementType: types.StringType,
+				Description: "User-defined key/value metadata.",
 			},
 			"version": schema.Int64Attribute{
-				Computed: true,
+				Computed:    true,
+				Description: "The version number of the secret.",
 			},
 		},
 	}
