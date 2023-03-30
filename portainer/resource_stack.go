@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"strconv"
 	"strings"
-	portainer "terraform-provider-portainer/client"
+	portainer2 "terraform-provider-portainer/client/portainer"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -30,7 +30,7 @@ func NewStackResource() resource.Resource {
 
 // stackResource is the resource implementation.
 type stackResource struct {
-	client *portainer.APIClient
+	data ProviderData
 }
 
 // Configure adds the provider configured client to the resource.
@@ -38,8 +38,8 @@ func (r *stackResource) Configure(_ context.Context, req resource.ConfigureReque
 	if req.ProviderData == nil {
 		return
 	}
-
-	r.client = req.ProviderData.(*portainer.APIClient)
+	data := req.ProviderData.(ProviderData)
+	r.data = data
 }
 
 // Metadata returns the resource type name.
@@ -79,14 +79,14 @@ func (r *stackResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 	jsonEnv := sb.String()
 
-	bodySwarmString := portainer.StacksSwarmStackFromFileContentPayload{
-		Env:              []portainer.PortainerPair{},
+	bodySwarmString := portainer2.StacksSwarmStackFromFileContentPayload{
+		Env:              []portainer2.PortainerPair{},
 		FromAppTemplate:  plan.FromAppTemplate.ValueBool(),
 		Name:             plan.Name.ValueString(),
 		StackFileContent: plan.FileContent.ValueString(),
 		SwarmID:          plan.SwarmId.ValueString(),
 	}
-	localVarOptionals := portainer.StacksApiStackCreateOpts{
+	localVarOptionals := portainer2.StacksApiStackCreateOpts{
 		BodySwarmString:          optional.NewInterface(bodySwarmString),
 		BodySwarmRepository:      optional.EmptyInterface(),
 		BodyComposeString:        optional.EmptyInterface(),
@@ -105,7 +105,7 @@ func (r *stackResource) Create(ctx context.Context, req resource.CreateRequest, 
 	// TODO we only support string stack content for now
 	method := "string"
 	endpointId := int32(plan.EndpointId.ValueInt64())
-	res, _, err := r.client.StacksApi.StackCreate(ctx, type_, method, endpointId, &localVarOptionals)
+	res, _, err := r.data.portainerClient.StacksApi.StackCreate(ctx, type_, method, endpointId, &localVarOptionals)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating stack",
@@ -117,7 +117,7 @@ func (r *stackResource) Create(ctx context.Context, req resource.CreateRequest, 
 	plan.ID = types.StringValue(fmt.Sprint(res.Id))
 	stackId, _ := strconv.Atoi(plan.ID.ValueString())
 	// Get refreshed stack value from Portainer
-	stack, _, err := r.client.StacksApi.StackInspect(ctx, int32(stackId))
+	stack, _, err := r.data.portainerClient.StacksApi.StackInspect(ctx, int32(stackId))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Portainer Stack",
@@ -147,7 +147,7 @@ func (r *stackResource) Read(ctx context.Context, req resource.ReadRequest, resp
 
 	// Get refreshed stack value from Portainer
 	stackId, _ := strconv.Atoi(state.ID.ValueString())
-	stack, _, err := r.client.StacksApi.StackInspect(ctx, int32(stackId))
+	stack, _, err := r.data.portainerClient.StacksApi.StackInspect(ctx, int32(stackId))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Portainer Stack",
@@ -161,7 +161,7 @@ func (r *stackResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	updateStack(&state, &stack)
 
 	tflog.Debug(ctx, "Fetching stack file content")
-	stackFileContent, _, err := r.client.StacksApi.StackFileInspect(ctx, int32(stackId))
+	stackFileContent, _, err := r.data.portainerClient.StacksApi.StackFileInspect(ctx, int32(stackId))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Portainer Stack file content",
@@ -192,16 +192,16 @@ func (r *stackResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	stackId, _ := strconv.Atoi(plan.ID.ValueString())
 	//endpointId := int32(plan.EndpointId.ValueInt64())
 
-	stackUpdateBody := portainer.StacksUpdateSwarmStackPayload{
+	stackUpdateBody := portainer2.StacksUpdateSwarmStackPayload{
 		StackFileContent: plan.FileContent.ValueString(),
-		Env:              []portainer.PortainerPair{},
+		Env:              []portainer2.PortainerPair{},
 		Prune:            true,
 		PullImage:        true,
 	}
-	localVarOptionals := portainer.StacksApiStackUpdateOpts{
+	localVarOptionals := portainer2.StacksApiStackUpdateOpts{
 		//EndpointId: optional.NewInt32(endpointId),
 	}
-	res, _, err := r.client.StacksApi.StackUpdate(ctx, int32(stackId), stackUpdateBody, &localVarOptionals)
+	res, _, err := r.data.portainerClient.StacksApi.StackUpdate(ctx, int32(stackId), stackUpdateBody, &localVarOptionals)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating stack",
@@ -213,7 +213,7 @@ func (r *stackResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	plan.ID = types.StringValue(fmt.Sprint(res.Id))
 
 	// Get refreshed stack value from Portainer
-	stack, _, err := r.client.StacksApi.StackInspect(ctx, int32(stackId))
+	stack, _, err := r.data.portainerClient.StacksApi.StackInspect(ctx, int32(stackId))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Portainer Stack",
@@ -224,7 +224,7 @@ func (r *stackResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	updateStack(&plan, &stack)
 
-	stackFileContent, _, err := r.client.StacksApi.StackFileInspect(ctx, int32(stackId))
+	stackFileContent, _, err := r.data.portainerClient.StacksApi.StackFileInspect(ctx, int32(stackId))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error Reading Portainer Stack file content",
@@ -254,22 +254,22 @@ func (r *stackResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 
 	stackId, _ := strconv.Atoi(state.ID.ValueString())
 	//endpointId := int32(state.EndpointId.ValueInt64())
-	localVarOptions := portainer.StacksApiStackDeleteOpts{
+	localVarOptions := portainer2.StacksApiStackDeleteOpts{
 		//	EndpointId: optional.NewInt32(endpointId),
 		//	External: optional.NewBool(false),
 	}
-	// Delete existing order
-	_, err := r.client.StacksApi.StackDelete(ctx, int32(stackId), &localVarOptions)
+	// Delete existing stack
+	_, err := r.data.portainerClient.StacksApi.StackDelete(ctx, int32(stackId), &localVarOptions)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error Deleting HashiCups Order",
-			"Could not delete order, unexpected error: "+err.Error(),
+			"Error Deleting Portainer stack",
+			"Could not delete stack, unexpected error: "+err.Error(),
 		)
 		return
 	}
 }
 
-func updateStack(plan *Stack, stack *portainer.PortainerStack) {
+func updateStack(plan *Stack, stack *portainer2.PortainerStack) {
 	plan.AutoUpdate = nil
 	plan.EndpointId = types.Int64Value(int64(stack.EndpointId))
 	plan.EntryPoint = types.StringValue(stack.EntryPoint)

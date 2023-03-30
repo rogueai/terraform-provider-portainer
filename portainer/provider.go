@@ -10,13 +10,20 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"os"
-	portainer "terraform-provider-portainer/client"
+	dockerApi "terraform-provider-portainer/client/docker"
+	portainerApi "terraform-provider-portainer/client/portainer"
 )
 
 // Ensure the implementation satisfies the expected interfaces
 var (
 	_ provider.Provider = &portainerProvider{}
 )
+
+type ProviderData struct {
+	host            string
+	portainerClient *portainerApi.APIClient
+	dockerClient    *dockerApi.APIClient
+}
 
 // New is a helper function to simplify provider server and testing implementation.
 func New() provider.Provider {
@@ -138,17 +145,32 @@ func (p *portainerProvider) Configure(ctx context.Context, req provider.Configur
 	tflog.Debug(ctx, "Creating Portainer client")
 
 	// Create a new Portainer client using the configuration values
-	clientConfig := portainer.NewConfiguration()
+	clientConfig := portainerApi.NewConfiguration()
 	clientConfig.BasePath = host
 	clientConfig.DefaultHeader = map[string]string{
 		"X-API-Key": apiKey,
 	}
-	client := portainer.NewAPIClient(clientConfig)
+	portainerClient := portainerApi.NewAPIClient(clientConfig)
+
+	dockerConfig := dockerApi.NewConfiguration()
+	// Portainer provides a docker API proxy available at: /api/endpoints/(endpointId}/docker
+	// BasePath needs to be changed before attempting to make actual requests
+	dockerConfig.BasePath = host
+	dockerConfig.DefaultHeader = map[string]string{
+		"X-API-Key": apiKey,
+	}
+	dockerClient := dockerApi.NewAPIClient(dockerConfig)
+
+	providerData := ProviderData{
+		host:            host,
+		portainerClient: portainerClient,
+		dockerClient:    dockerClient,
+	}
 
 	// Make the Portainer client available during DataSource and Resource
 	// type Configure methods.
-	resp.DataSourceData = client
-	resp.ResourceData = client
+	resp.DataSourceData = providerData
+	resp.ResourceData = providerData
 
 	tflog.Info(ctx, "Configured Portainer client", map[string]any{"success": true})
 }
@@ -164,5 +186,6 @@ func (p *portainerProvider) DataSources(_ context.Context) []func() datasource.D
 func (p *portainerProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewStackResource,
+		NewSecretResource,
 	}
 }

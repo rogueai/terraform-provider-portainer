@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	portainer "terraform-provider-portainer/client"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -22,7 +21,7 @@ func NewStacksDataSource() datasource.DataSource {
 }
 
 type stacksDataSource struct {
-	client *portainer.APIClient
+	data ProviderData
 }
 
 func (d *stacksDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -34,11 +33,23 @@ func (d *stacksDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 	resp.Schema = stacksDataSourceSchema()
 }
 
+// Configure adds the provider configured client to the data source.
+func (d *stacksDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
+	tflog.Info(ctx, "Configuring Portainer client")
+
+	if req.ProviderData == nil {
+		return
+	}
+
+	data := req.ProviderData.(ProviderData)
+	d.data.portainerClient = data.portainerClient
+}
+
 // Read refreshes the Terraform state with the latest data.
 func (d *stacksDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var state Stacks
 
-	stacks, _, err := d.client.StacksApi.StackList(ctx, nil)
+	stacks, _, err := d.data.portainerClient.StacksApi.StackList(ctx, nil)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Read Portainer Stack",
@@ -153,17 +164,6 @@ func (d *stacksDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-}
-
-// Configure adds the provider configured client to the data source.
-func (d *stacksDataSource) Configure(ctx context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
-	tflog.Info(ctx, "Configuring Portainer client")
-
-	if req.ProviderData == nil {
-		return
-	}
-
-	d.client = req.ProviderData.(*portainer.APIClient)
 }
 
 func stacksDataSourceSchema() schema.Schema {
