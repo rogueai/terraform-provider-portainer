@@ -20,18 +20,5 @@ jobs:
       - name: Build
         run: go build -v ./portainer
 
-      - name: Cache prism-cli
-        id: cache-prism-cli
-        uses: actions/cache@v3
-        with:
-          path: ./testacc/prism-cli
-          key: ${{ runner.os }}-prism-cli
-
-      - name: Fetch prism-cli
-        if: steps.cache-prism-cli.outputs.cache-hit != 'true'
-        run: |
-          wget https://github.com/rogueai/prism/releases/download/v4.11.1-1/prism-cli-linux -O ./testacc/prism-cli
-          chmod +x ./testacc/prism-cli
-
       - name: Test
         run: make testacc

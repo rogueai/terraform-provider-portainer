@@ -1,0 +1,45 @@
+{
+  "CreatedByUserId": 3,
+  "Description": "High performance web server",
+  "EntryPoint": "docker-compose.yml",
+  "Id": 1,
+  "Logo": "https://cloudinovasi.id/assets/img/logos/nginx.png",
+  "Note": "This is my <b>custom</b> template",
+  "Platform": 1,
+  "ProjectPath": "/data/custom_template/3",
+  "ResourceControl": {
+    "AccessLevel": 0,
+    "AdministratorsOnly": true,
+    "Id": 1,
+    "OwnerId": 0,
+    "Public": true,
+    "ResourceId": "617c5f22bb9b023d6daab7cba43a57576f83492867bc767d1c59416b065e5f08",
+    "SubResourceIds": [
+      "617c5f22bb9b023d6daab7cba43a57576f83492867bc767d1c59416b065e5f08"
+    ],
+    "System": true,
+    "TeamAccesses": [
+      {
+        "AccessLevel": 0,
+        "TeamId": 0
+      }
+    ],
+    "Type": 1,
+    "UserAccesses": [
+      {
+        "AccessLevel": 0,
+        "UserId": 0
+      }
+    ]
+  },
+  "Title": "Nginx",
+  "Type": 1,
+  "variables": [
+    {
+      "defaultValue": "default value",
+      "description": "Description",
+      "label": "My Variable",
+      "name": "MY_VAR"
+    }
+  ]
+}

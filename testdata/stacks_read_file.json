@@ -1,0 +1,3 @@
+{
+  "StackFileContent": "version: 3\n services:\n web:\n image:nginx"
+}
