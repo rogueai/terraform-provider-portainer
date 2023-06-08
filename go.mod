@@ -5,9 +5,9 @@ go 1.18
 require (
 	github.com/antihax/optional v1.0.0
 	github.com/hashicorp/terraform-plugin-docs v0.14.1
-	github.com/hashicorp/terraform-plugin-framework v1.2.0
+	github.com/hashicorp/terraform-plugin-framework v1.3.0
 	github.com/hashicorp/terraform-plugin-go v0.15.0
-	github.com/hashicorp/terraform-plugin-log v0.8.0
+	github.com/hashicorp/terraform-plugin-log v0.9.0
 	github.com/hashicorp/terraform-plugin-testing v1.2.0
 	golang.org/x/net v0.9.0
 	golang.org/x/oauth2 v0.7.0
