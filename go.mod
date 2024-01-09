@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.31.0
 	github.com/hashicorp/terraform-plugin-testing v1.6.0
 	golang.org/x/net v0.20.0
-	golang.org/x/oauth2 v0.15.0
+	golang.org/x/oauth2 v0.16.0
 )
 
 require (
